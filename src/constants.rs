@@ -1,1 +1,1 @@
-pub const C2_HOST: &str = "https://httpbin.org/ip";
+pub const C2_HOST: &str = "http://localhost:3000";
