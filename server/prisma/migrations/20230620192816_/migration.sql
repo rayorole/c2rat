@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Client` ADD COLUMN `os` VARCHAR(191) NULL;

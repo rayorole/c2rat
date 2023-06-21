@@ -38,6 +38,7 @@ version = "0.1.0"
 dependencies = [
  "machine-uid",
  "reqwest",
+ "serde_json",
  "whoami",
 ]
 
